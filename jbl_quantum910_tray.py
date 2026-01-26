@@ -109,6 +109,21 @@ def parse_battery_from_packet(packet: bytes) -> Optional[int]:
     return None
 
 
+def parse_mute_from_packet(packet: bytes) -> Optional[tuple[bool, bool]]:
+    """
+    Parse mute status from a packet (Report ID 0x2f).
+    - 0x2f 0x02 = toggle mute (botão pressionado) -> retorna (True, True) = toggle
+    - 0x2f 0x00 = estado desmutado -> retorna (False, False) = desmutado
+    Returns (is_toggle, is_muted) or None if not a mute packet.
+    """
+    if len(packet) >= 2 and packet[0] == 0x2f:
+        if packet[1] == 0x02:
+            return (True, True)  # Toggle - precisa alternar estado
+        elif packet[1] == 0x00:
+            return (False, False)  # Estado desmutado
+    return None
+
+
 def _log(msg: str) -> None:
     # Journald/systemd friendly: timestamp + flush
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -118,6 +133,15 @@ def _log(msg: str) -> None:
 @dataclass
 class BatterySample:
     percent: int
+    source: str
+    raw_hex: str
+    ts: float
+
+
+@dataclass
+class MuteSample:
+    is_toggle: bool  # True se é toggle (0x02), False se é estado (0x00)
+    muted: bool  # True se mutado, False se desmutado
     source: str
     raw_hex: str
     ts: float
@@ -142,28 +166,30 @@ class HidrawBatteryReader:
         self._fd = os.open(self.path, os.O_RDONLY | os.O_NONBLOCK)
 
     def poll(self) -> Optional[BatterySample]:
+        """Poll for battery updates. Also checks for mute in the same read."""
         try:
             self._ensure_open()
         except Exception:
             self.close()
             return None
 
-        last: Optional[BatterySample] = None
-        # Drain available packets (non-blocking) to get the latest battery update.
+        last_battery: Optional[BatterySample] = None
+        # Drain available packets (non-blocking) to get the latest updates.
         for _ in range(32):
             try:
                 data = os.read(self._fd, 64)  # type: ignore[arg-type]
                 if not data:
                     break
+                # Check for battery
                 percent = parse_battery_from_packet(data)
-                if percent is None:
-                    continue
-                last = BatterySample(
-                    percent=percent,
-                    source=f"hidraw:{self.path}",
-                    raw_hex=" ".join(f"{b:02x}" for b in data[:8]),
-                    ts=time.time(),
-                )
+                if percent is not None:
+                    last_battery = BatterySample(
+                        percent=percent,
+                        source=f"hidraw:{self.path}",
+                        raw_hex=" ".join(f"{b:02x}" for b in data[:8]),
+                        ts=time.time(),
+                    )
+                # Also check for mute (but don't return it here, handled separately)
             except OSError as e:
                 if e.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
                     break
@@ -174,7 +200,54 @@ class HidrawBatteryReader:
                 self.close()
                 return None
 
-        return last
+        return last_battery
+
+    def poll_all(self) -> tuple[Optional[BatterySample], Optional[MuteSample]]:
+        """Poll for both battery and mute updates in a single read pass."""
+        try:
+            self._ensure_open()
+        except Exception:
+            self.close()
+            return None, None
+
+        last_battery: Optional[BatterySample] = None
+        last_mute: Optional[MuteSample] = None
+        # Drain available packets (non-blocking) to get the latest updates.
+        for _ in range(32):
+            try:
+                data = os.read(self._fd, 64)  # type: ignore[arg-type]
+                if not data:
+                    break
+                # Check for battery
+                percent = parse_battery_from_packet(data)
+                if percent is not None:
+                    last_battery = BatterySample(
+                        percent=percent,
+                        source=f"hidraw:{self.path}",
+                        raw_hex=" ".join(f"{b:02x}" for b in data[:8]),
+                        ts=time.time(),
+                    )
+                # Check for mute
+                mute_info = parse_mute_from_packet(data)
+                if mute_info is not None:
+                    is_toggle, is_muted = mute_info
+                    last_mute = MuteSample(
+                        is_toggle=is_toggle,
+                        muted=is_muted,
+                        source=f"hidraw:{self.path}",
+                        raw_hex=" ".join(f"{b:02x}" for b in data[:8]),
+                        ts=time.time(),
+                    )
+            except OSError as e:
+                if e.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
+                    break
+                self.close()
+                return None, None
+            except Exception:
+                self.close()
+                return None, None
+
+        return last_battery, last_mute
 
 
 class PyUsbBatteryReader:
@@ -278,6 +351,78 @@ class PyUsbBatteryReader:
             self.close()
             return None
 
+    def poll_all(self) -> tuple[Optional[BatterySample], Optional[MuteSample]]:
+        """Poll for both battery and mute updates, draining multiple packets like hidraw."""
+        try:
+            if not self._ensure_ready():
+                return None, None
+
+            last_battery: Optional[BatterySample] = None
+            last_mute: Optional[MuteSample] = None
+            
+            # Drain multiple packets (non-blocking) to get the latest updates
+            # Similar to hidraw implementation, but with reasonable timeout
+            # Read a few packets with short timeout, then one with longer timeout
+            for i in range(5):
+                try:
+                    dev = self._device
+                    ep = self._endpoint
+                    if dev is None or ep is None:
+                        break
+                    # Use shorter timeout for first few reads (non-blocking)
+                    timeout_ms = 50 if i < 4 else self.timeout_ms
+                    data = dev.read(ep.bEndpointAddress, ep.wMaxPacketSize, timeout_ms)
+                    data_bytes = bytes(data)
+                    
+                    # Check for battery
+                    percent = parse_battery_from_packet(data_bytes)
+                    if percent is not None:
+                        last_battery = BatterySample(
+                            percent=percent,
+                            source="pyusb",
+                            raw_hex=" ".join(f"{b:02x}" for b in data_bytes[:8]),
+                            ts=time.time(),
+                        )
+                    
+                    # Check for mute
+                    mute_info = parse_mute_from_packet(data_bytes)
+                    if mute_info is not None:
+                        is_toggle, is_muted = mute_info
+                        last_mute = MuteSample(
+                            is_toggle=is_toggle,
+                            muted=is_muted,
+                            source="pyusb",
+                            raw_hex=" ".join(f"{b:02x}" for b in data_bytes[:8]),
+                            ts=time.time(),
+                        )
+                except Exception as e:
+                    # Timeout is expected when no more data
+                    try:
+                        if hasattr(e, "errno") and e.errno == 110:  # ETIMEDOUT
+                            # On timeout, return what we have so far
+                            if last_battery is not None or last_mute is not None:
+                                return last_battery, last_mute
+                            # If no data yet and it's the last read, break
+                            if i >= 4:
+                                break
+                            # Otherwise continue to next read
+                            continue
+                    except Exception:
+                        pass
+                    # Other errors - stop reading and return what we have
+                    break
+            
+            return last_battery, last_mute
+        except Exception as e:
+            try:
+                if hasattr(e, "errno") and e.errno == 110:  # ETIMEDOUT
+                    return None, None
+            except Exception:
+                pass
+            self.last_error = str(e)
+            self.close()
+            return None, None
+
 
 class BatteryTrayApp:
     def __init__(self, refresh_seconds: float, prefer_pyusb: bool, pyusb_detach: bool):
@@ -287,9 +432,11 @@ class BatteryTrayApp:
         self.Gtk, self.GLib, self.AppIndicator = _import_appindicator()
 
         self.last_sample: Optional[BatterySample] = None
+        self.last_mute_sample: Optional[MuteSample] = None
         self._last_label: Optional[str] = None
         self._last_logged_error: Optional[str] = None
         self._last_logged_percent: Optional[int] = None
+        self._is_muted: bool = False
 
         hidraw = find_hidraw_device()
         self.hidraw_reader = HidrawBatteryReader(hidraw) if hidraw else None
@@ -339,7 +486,14 @@ class BatteryTrayApp:
         finally:
             self.Gtk.main_quit()
 
-    def _battery_icon_name(self, percent: Optional[int]) -> str:
+    def _battery_icon_name(self, percent: Optional[int], is_muted: bool = False) -> str:
+        """Get icon name based on battery level and mute status."""
+        if is_muted:
+            # Use microphone-muted icon when muted
+            # Try multiple icon names for compatibility
+            return "microphone-sensitivity-muted-symbolic"
+            # Alternatives: "audio-input-microphone-muted-symbolic", "microphone-disabled-symbolic"
+        
         if percent is None:
             return "battery-missing-symbolic"
         if percent >= 95:
@@ -368,6 +522,51 @@ class BatteryTrayApp:
                 return sample
         return None
 
+    def _read_all_once(self) -> tuple[Optional[BatterySample], Optional[MuteSample]]:
+        """Read both battery and mute status from device."""
+        # Priority: read battery using poll (original method that worked)
+        # Then try to read mute separately if needed
+        readers = []
+        if self.prefer_pyusb:
+            readers = [("pyusb", self.pyusb_reader.poll), ("hidraw", (self.hidraw_reader.poll if self.hidraw_reader else None))]
+        else:
+            readers = [("hidraw", (self.hidraw_reader.poll if self.hidraw_reader else None)), ("pyusb", self.pyusb_reader.poll)]
+
+        battery_sample = None
+        for _, fn in readers:
+            if fn is None:
+                continue
+            try:
+                battery_sample = fn()
+                if battery_sample is not None:
+                    break
+            except Exception:
+                continue
+        
+        # Try to read mute using poll_all (non-blocking, won't interfere if no data)
+        mute_sample = None
+        try:
+            # Only try hidraw for mute (less intrusive)
+            if self.hidraw_reader:
+                try:
+                    _, mute = self.hidraw_reader.poll_all()
+                    if mute is not None:
+                        mute_sample = mute
+                except Exception:
+                    pass
+            # Also try pyusb poll_all if hidraw didn't work
+            if mute_sample is None:
+                try:
+                    _, mute = self.pyusb_reader.poll_all()
+                    if mute is not None:
+                        mute_sample = mute
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        
+        return battery_sample, mute_sample
+
     def _force_refresh(self):
         sample = self._read_once()
         if sample is not None:
@@ -375,12 +574,19 @@ class BatteryTrayApp:
         self._render()
 
     def _tick(self):
-        sample = self._read_once()
-        if sample is not None:
-            self.last_sample = sample
-            if self._last_logged_percent != sample.percent:
-                _log(f"Bateria: {sample.percent}% (fonte={sample.source}, dados={sample.raw_hex})")
-                self._last_logged_percent = sample.percent
+        # Read both battery and mute in a single pass
+        battery_sample, mute_sample = self._read_all_once()
+        
+        needs_render = False
+        
+        if battery_sample is not None:
+            # Force render if battery changed
+            if self.last_sample is None or self.last_sample.percent != battery_sample.percent:
+                needs_render = True
+            self.last_sample = battery_sample
+            if self._last_logged_percent != battery_sample.percent:
+                _log(f"Bateria: {battery_sample.percent}% (fonte={battery_sample.source}, dados={battery_sample.raw_hex})")
+                self._last_logged_percent = battery_sample.percent
                 self._last_logged_error = None
         else:
             # Surface pyusb errors (most common: permission / claim interface)
@@ -388,36 +594,81 @@ class BatteryTrayApp:
             if err and err != self._last_logged_error:
                 _log(f"Sem leitura. Erro pyusb: {err}")
                 self._last_logged_error = err
+            # Even if no new battery data, keep rendering with last known value
+        
+        if mute_sample is not None:
+            old_muted = self._is_muted
+            self.last_mute_sample = mute_sample
+            if mute_sample.is_toggle:
+                # O código 0x2f 0x02 é um toggle - alterna o estado
+                self._is_muted = not self._is_muted
+                status = "MUTADO" if self._is_muted else "DESMUTADO"
+                emoji = "🔇" if self._is_muted else "🎤"
+                _log(f"Microfone {emoji} {status} (toggle detectado, fonte={mute_sample.source}, dados={mute_sample.raw_hex})")
+            else:
+                # 0x2f 0x00 = estado desmutado
+                self._is_muted = False
+                _log(f"Microfone 🎤 DESMUTADO (estado recebido, fonte={mute_sample.source}, dados={mute_sample.raw_hex})")
+            
+            # Force render if mute state changed
+            if old_muted != self._is_muted:
+                needs_render = True
+        
+        # Always render, but force update if something changed
+        if needs_render or (battery_sample is not None and self._last_label == "--%"):
+            self._last_label = None  # Force label update
         self._render()
         return True  # keep timer
 
     def _render(self):
         percent = self.last_sample.percent if self.last_sample else None
-        icon = self._battery_icon_name(percent)
+        icon = self._battery_icon_name(percent, self._is_muted)
+        # Force icon update by setting it again
         self.indicator.set_icon_full(icon, "JBL Quantum910 Battery")
+        # Also try setting status to force refresh
+        self.indicator.set_status(self.AppIndicator.IndicatorStatus.ACTIVE)
 
         err = getattr(self.pyusb_reader, "last_error", None)
         if percent is not None:
-            label = f"{percent}%"
+            mute_indicator = " 🔇" if self._is_muted else ""
+            label = f"{percent}%{mute_indicator}"
         elif err:
             label = "ERR"
         else:
             label = "--%"
-        # Avoid spamming updates if unchanged (some trays flicker).
-        if label != self._last_label:
-            self.indicator.set_label(label, "")
-            self._last_label = label
+        
+        # Always update label if we have battery data or if label changed
+        # Force update if we have data but label is still showing "--%"
+        should_update = (
+            label != self._last_label or 
+            self._last_label is None or
+            (percent is not None and self._last_label == "--%")
+        )
+        
+        if should_update:
+            try:
+                self.indicator.set_label(label, "")
+                self._last_label = label
+                # Log when label is updated for debugging
+                if percent is not None:
+                    _log(f"Tray label atualizado: {label}")
+            except Exception as e:
+                # Some tray implementations don't support set_label
+                _log(f"Erro ao atualizar label: {e}")
+                pass
 
-        # Tooltip with freshness + source
+        # Tooltip with freshness + source + mute status
         if self.last_sample:
             age_s = max(0.0, time.time() - self.last_sample.ts)
-            tip = f"JBL Quantum910: {self.last_sample.percent}%\nFonte: {self.last_sample.source}\nAtualizado há: {age_s:.0f}s\nDados: {self.last_sample.raw_hex}"
+            mute_status = "🔇 MUTADO" if self._is_muted else "🎤 Ativo"
+            tip = f"JBL Quantum910: {self.last_sample.percent}%\nMicrofone: {mute_status}\nFonte: {self.last_sample.source}\nAtualizado há: {age_s:.0f}s\nDados: {self.last_sample.raw_hex}"
         else:
             src = "hidraw" if self.hidraw_reader else "pyusb"
             extra = ""
             if src == "pyusb" and getattr(self.pyusb_reader, "last_error", None):
                 extra = f"\nErro: {self.pyusb_reader.last_error}"
-            tip = f"JBL Quantum910: sem leitura ainda\nTentando via: {src}{extra}\nDica: use o fone (volume/botões) para gerar tráfego."
+            mute_status = "🔇 MUTADO" if self._is_muted else "🎤 Ativo"
+            tip = f"JBL Quantum910: sem leitura ainda\nMicrofone: {mute_status}\nTentando via: {src}{extra}\nDica: use o fone (volume/botões) para gerar tráfego."
         try:
             self.indicator.set_title("JBL Quantum910 Battery")
         except Exception:
