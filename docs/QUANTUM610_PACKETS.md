@@ -406,4 +406,12 @@ All reversible 1-byte SETs tried with read-before/verify-after/restore.
 * **Q400/Q600 manuals**: RGB toggle = hold mic-mute button 5 s (likely works
   on 610 too — hardware shortcut, zero risk to try). Q600 auto-offs after
   10 min idle (cf. `0x75` standby = 6 factory).
+* **Pakrohk/linux-hifi-suite**: generic PipeWire audio suite (EQ via AutoEq
+  convolution, surround configs, NC/EC, low-latency quantum) — no JBL-HID
+  code, but exactly the audio-side complement to this repo. Borrowed: the
+  filter-chain convolver pattern (`pipewire/q610-eq.conf`), filled with
+  JBL's own factory tuning instead of AutoEq: `tools/generate_q610_eq.py`
+  renders `EqConfig-Q610.xml` (+3.5 dB@360/Q2.5, −2 dB@2k/Q1.4,
+  +5 dB@13k/Q0.8) into an FIR WAV (curve verified ≤0.4 dB). Their
+  low-latency quantum=64 mode is also directly usable with the 610.
 
