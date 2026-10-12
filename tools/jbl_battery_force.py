@@ -1,75 +1,95 @@
 #!/usr/bin/env python3
 """
-Script para forçar o envio de informações de bateria do JBL Quantum910
-Analisa o que é enviado durante conexão e tenta replicar comandos
+Script to force battery information reporting from JBL Quantum headsets.
+Analyzes what is sent during connection and attempts to replicate commands.
 """
 
 import os
 import sys
 import time
 import struct
+import glob
 
-HIDRAW_DEVICE = "/dev/hidraw5"
+def find_hidraw_device():
+    """Find the first hidraw device matching JBL Quantum vendor/product."""
+    VENDOR_ID = "0ecb"
+    PRODUCT_IDS = ["2088", "205c"]  # 910, 610
+
+    # Look through /sys/bus/hid/devices
+    for device_dir in glob.glob("/sys/bus/hid/devices/*"):
+        vendor_file = os.path.join(device_dir, "idVendor")
+        product_file = os.path.join(device_dir, "idProduct")
+
+        if os.path.exists(vendor_file) and os.path.exists(product_file):
+            try:
+                with open(vendor_file, 'r') as f:
+                    vendor = f.read().strip().lower()
+                with open(product_file, 'r') as f:
+                    product = f.read().strip().lower()
+
+                if vendor == VENDOR_ID and product in PRODUCT_IDS:
+                    hidraw_path = os.path.join(device_dir, "hidraw")
+                    if os.path.exists(hidraw_path):
+                        hidraw_dirs = [d for d in os.listdir(hidraw_path) if d.startswith("hidraw")]
+                        if hidraw_dirs:
+                            hidraw_device = f"/dev/{hidraw_dirs[0]}"
+                            if os.path.exists(hidraw_device):
+                                return hidraw_device
+            except Exception:
+                pass
+    return None
 
 
-def check_permissions():
-    """Verifica se temos permissão para acessar o hidraw"""
-    if not os.path.exists(HIDRAW_DEVICE):
-        print(f"Erro: {HIDRAW_DEVICE} não encontrado")
+def check_permissions(device_path):
+    """Check if we have permission to access the hidraw device."""
+    if not device_path or not os.path.exists(device_path):
         return False
 
-    if not os.access(HIDRAW_DEVICE, os.R_OK | os.W_OK):
-        print(f"Erro: Sem permissão para ler/escrever {HIDRAW_DEVICE}")
-        print(f"Permissões atuais: {oct(os.stat(HIDRAW_DEVICE).st_mode)[-3:]}")
-        print("\nSoluções:")
-        print(f"1. Execute como root: sudo python3 {sys.argv[0]}")
-        print(f"2. Ou ajuste permissões: sudo chmod 666 {HIDRAW_DEVICE}")
+    if not os.access(device_path, os.R_OK | os.W_OK):
+        print(f"Error: No permission to read/write {device_path}")
+        print(f"Current permissions: {oct(os.stat(device_path).st_mode)[-3:]}")
+        print("\nSolutions:")
+        print(f"1. Run as root: sudo python3 {sys.argv[0]}")
+        print(f"2. Or adjust permissions: sudo chmod 666 {device_path}")
         return False
 
     return True
 
 
 def send_feature_report(device, report_id, data=None):
-    """Envia um feature report HID (comando para o dispositivo)"""
-    # Feature reports geralmente começam com o Report ID
+    """Send a HID feature report (command to the device)."""
     if data is None:
         payload = bytes([report_id] + [0] * 63)  # 64 bytes total
     else:
-        payload = bytes([report_id] + list(data[:63]))  # Report ID + dados
+        payload = bytes([report_id] + list(data[:63]))  # Report ID + data
 
     try:
-        # IOCTL para enviar feature report
-        # Linux usa ioctl HIDIOCSFEATURE
         import fcntl
-        import termios
-
-        # HIDIOCSFEATURE(len) - envia feature report
-        # HIDIOCGFEATURE(len) - recebe feature report
-        HIDIOCSFEATURE = 0xC0094806  # _IOC(_IOC_WRITE|_IOC_READ, 'H', 0x06, len)
-        HIDIOCGFEATURE = 0xC0094807  # _IOC(_IOC_WRITE|_IOC_READ, 'H', 0x07, len)
-
-        # Tenta enviar feature report
-        result = fcntl.ioctl(device.fileno(), HIDIOCSFEATURE, payload)
+        # HIDIOCSFEATURE(len) - sends feature report
+        HIDIOCSFEATURE = 0xC0094806 | (len(payload) << 16)
+        
+        # Attempt to send feature report
+        fcntl.ioctl(device.fileno(), HIDIOCSFEATURE, payload)
         return True
     except Exception as e:
-        print(f"  Erro ao enviar feature report: {e}")
+        print(f"  Error sending feature report: {e}")
         return False
 
 
 def try_commands(device):
-    """Tenta diferentes comandos para solicitar bateria"""
-    print("\n🔧 Tentando enviar comandos para solicitar bateria...")
+    """Try different commands to request battery info."""
+    print("\n🔧 Attempting to send commands to request battery info...")
     print("=" * 60)
 
-    # Comandos comuns para solicitar bateria em dispositivos HID
+    # Common commands to request battery on HID devices
     commands_to_try = [
-        # Comando simples com Report ID 0x08 (o que recebemos)
+        # Simple command with Report ID 0x08 (what we receive)
         (0x08, [0x08]),
 
-        # Feature report com Report ID 0x08
+        # Feature report with Report ID 0x08
         (0x08, None),
 
-        # Outros Report IDs comuns
+        # Other common Report IDs
         (0x01, [0x01]),
         (0x02, [0x02]),
         (0x03, [0x03]),
@@ -79,20 +99,20 @@ def try_commands(device):
         (0x07, [0x07]),
         (0x09, [0x09]),
 
-        # Comandos de solicitação de status
-        (0x01, [0x01, 0x00]),  # Solicitar status
-        (0x08, [0x08, 0x00]),  # Solicitar bateria especificamente
+        # Status request commands
+        (0x01, [0x01, 0x00]),  # Request status
+        (0x08, [0x08, 0x00]),  # Specifically request battery
 
-        # Padrão comum: [Report ID, Comando, ...]
-        (0x08, [0x08, 0x01]),  # Comando 0x01 = solicitar
-        (0x08, [0x08, 0x02]),  # Comando 0x02 = status
+        # Common pattern: [Report ID, Command, ...]
+        (0x08, [0x08, 0x01]),  # Command 0x01 = request
+        (0x08, [0x08, 0x02]),  # Command 0x02 = status
     ]
 
     for report_id, data in commands_to_try:
         hex_cmd = ' '.join([f'{b:02x}' for b in ([report_id] + (data or []))[:8]])
-        print(f"\n📤 Tentando: Report ID 0x{report_id:02x}, Dados: {hex_cmd}")
+        print(f"\n📤 Trying: Report ID 0x{report_id:02x}, Data: {hex_cmd}")
 
-        # Tenta escrever diretamente no hidraw
+        # Try writing directly to hidraw
         try:
             if data:
                 cmd_bytes = bytes([report_id] + list(data))
@@ -100,12 +120,12 @@ def try_commands(device):
                 cmd_bytes = bytes([report_id] + [0] * 63)
 
             device.write(cmd_bytes)
-            print(f"  ✓ Comando enviado: {hex_cmd}")
+            print(f"  ✓ Command sent: {hex_cmd}")
 
-            # Aguarda resposta
+            # Wait for response
             time.sleep(0.3)
 
-            # Tenta ler resposta (sem settimeout, usa select ou polling)
+            # Try to read response
             import select
             ready, _, _ = select.select([device], [], [], 0.5)
             if ready:
@@ -114,39 +134,16 @@ def try_commands(device):
                     if response:
                         resp_bytes = list(response)
                         hex_resp = ' '.join([f'{b:02x}' for b in resp_bytes[:8]])
-                        print(f"  📥 Resposta recebida: {hex_resp}")
+                        print(f"  📥 Response received: {hex_resp}")
 
-                        # Verifica se é bateria
+                        # Check if it's battery info
                         if len(resp_bytes) >= 2 and resp_bytes[0] == 0x08 and 0 <= resp_bytes[1] <= 100:
-                            print(f"  ⚡⚡⚡ BATERIA ENCONTRADA: {resp_bytes[1]}% ⚡⚡⚡")
+                            print(f"  ⚡⚡⚡ BATTERY FOUND: {resp_bytes[1]}% ⚡⚡⚡")
                             return resp_bytes[1]
                 except Exception:
                     pass
-            else:
-                # Tenta ler mesmo sem select (pode bloquear, mas tentamos)
-                try:
-                    # Configura modo não-bloqueante se possível
-                    import fcntl
-                    flags = fcntl.fcntl(device.fileno(), fcntl.F_GETFL)
-                    fcntl.fcntl(device.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
-
-                    response = device.read(64)
-                    if response:
-                        resp_bytes = list(response)
-                        hex_resp = ' '.join([f'{b:02x}' for b in resp_bytes[:8]])
-                        print(f"  📥 Resposta recebida: {hex_resp}")
-
-                        if len(resp_bytes) >= 2 and resp_bytes[0] == 0x08 and 0 <= resp_bytes[1] <= 100:
-                            print(f"  ⚡⚡⚡ BATERIA ENCONTRADA: {resp_bytes[1]}% ⚡⚡⚡")
-                            return resp_bytes[1]
-
-                    # Restaura flags
-                    fcntl.fcntl(device.fileno(), fcntl.F_SETFL, flags)
-                except Exception:
-                    pass
-
         except Exception as e:
-            print(f"  ✗ Erro: {e}")
+            print(f"  ✗ Error: {e}")
 
         time.sleep(0.1)
 
@@ -154,138 +151,157 @@ def try_commands(device):
 
 
 def monitor_connection():
-    """Monitora durante conexão/desconexão para capturar comandos"""
-    print("JBL Quantum910 - Análise de Conexão e Forçar Bateria")
+    """Monitor during connection/disconnection to capture commands."""
+    print("JBL Quantum - Connection Analysis and Force Battery")
     print("=" * 60)
-    print(f"Dispositivo: {HIDRAW_DEVICE}")
+    
+    hidraw_device = find_hidraw_device()
+    if hidraw_device:
+        print(f"Device found: {hidraw_device}")
+    else:
+        print("Device not found yet. Searching...")
     print()
 
-    if not check_permissions():
-        sys.exit(1)
-
-    print("📋 INSTRUÇÕES:")
-    print("1. Este script vai monitorar o dispositivo")
-    print("2. DESCONECTE o fone USB agora")
-    print("3. Aguarde 2 segundos")
-    print("4. CONECTE o fone USB novamente")
-    print("5. O script vai capturar tudo que acontece")
+    print("📋 INSTRUCTIONS:")
+    print("1. This script will monitor the device.")
+    print("2. DISCONNECT the USB headset now.")
+    print("3. Wait 2 seconds.")
+    print("4. RECONNECT the USB headset.")
+    print("5. The script will capture everything that happens.")
     print()
-    print("Pressione Enter quando estiver pronto para começar...")
+    print("Press Enter when ready to start...")
     input()
 
-    print("\n⏳ Aguardando desconexão...")
-    print("(Desconecte o fone USB agora)")
+    print("\n⏳ Waiting for disconnection...")
+    print("(Disconnect the USB headset now)")
 
-    # Monitora até o dispositivo desaparecer
-    while os.path.exists(HIDRAW_DEVICE):
+    # Monitor until device disappears
+    while hidraw_device and os.path.exists(hidraw_device):
+        hidraw_device = find_hidraw_device()
         time.sleep(0.1)
 
-    print("✓ Dispositivo desconectado")
+    print("✓ Device disconnected")
     time.sleep(2)
 
-    print("\n⏳ Aguardando reconexão...")
-    print("(Conecte o fone USB agora)")
+    print("\n⏳ Waiting for reconnection...")
+    print("(Connect the USB headset now)")
 
-    # Aguarda reconexão
+    # Wait for reconnection
     timeout = 10
     start_time = time.time()
-    while not os.path.exists(HIDRAW_DEVICE):
+    while not hidraw_device:
+        hidraw_device = find_hidraw_device()
         if time.time() - start_time > timeout:
-            print("✗ Timeout: Dispositivo não reconectado")
+            print("✗ Timeout: Device not reconnected")
             sys.exit(1)
         time.sleep(0.1)
 
-    print("✓ Dispositivo reconectado!")
-    time.sleep(0.5)  # Aguarda estabilizar
+    print("✓ Device reconnected!")
+    time.sleep(0.5)  # Wait for stabilization
 
-    # Agora monitora tudo que acontece
-    print("\n📡 Monitorando comunicação durante inicialização...")
+    if not check_permissions(hidraw_device):
+        print("Permission error. Please run with sudo or fix udev rules.")
+        sys.exit(1)
+
+    # Now monitor everything that happens
+    print("\n📡 Monitoring communication during initialization...")
     print("=" * 60)
 
     try:
-        with open(HIDRAW_DEVICE, 'rb+') as f:  # rb+ para leitura e escrita
-            # Primeiro, tenta ler tudo que o dispositivo envia
-            print("\n📥 Lendo dados recebidos do dispositivo...")
+        with open(hidraw_device, 'rb+') as f:  # rb+ for reading and writing
+            # First, try to read everything the device sends
+            print("\n📥 Reading data received from device...")
             packets_received = []
 
-            for i in range(20):  # Tenta ler até 20 pacotes
+            # Set non-blocking for reading
+            import fcntl
+            flags = fcntl.fcntl(f.fileno(), fcntl.F_GETFL)
+            fcntl.fcntl(f.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+            for i in range(50):  # Try to read many packets
                 try:
-                    f.settimeout(0.5)
-                    data = f.read(64)
-                    if data:
-                        data_bytes = list(data)
-                        hex_data = ' '.join([f'{b:02x}' for b in data_bytes])
-                        timestamp = time.strftime('%H:%M:%S.%f')[:-3]
-                        print(f"[{timestamp}] 📥 Recebido ({len(data_bytes)} bytes): {hex_data}")
+                    import select
+                    ready, _, _ = select.select([f], [], [], 0.1)
+                    if ready:
+                        data = f.read(64)
+                        if data:
+                            data_bytes = list(data)
+                            hex_data = ' '.join([f'{b:02x}' for b in data_bytes])
+                            timestamp = time.strftime('%H:%M:%S.%f')[:-3]
+                            print(f"[{timestamp}] 📥 Received ({len(data_bytes)} bytes): {hex_data}")
 
-                        # Verifica se é bateria
-                        if len(data_bytes) >= 2 and data_bytes[0] == 0x08 and 0 <= data_bytes[1] <= 100:
-                            print(f"  ⚡⚡⚡ BATERIA: {data_bytes[1]}% ⚡⚡⚡")
+                            # Check if it's battery info
+                            if len(data_bytes) >= 2 and data_bytes[0] == 0x08 and 0 <= data_bytes[1] <= 100:
+                                print(f"  ⚡⚡⚡ BATTERY: {data_bytes[1]}% ⚡⚡⚡")
 
-                        packets_received.append(data_bytes)
+                            packets_received.append(data_bytes)
                     else:
-                        break
+                        if i > 20: break # Break if no data for a while
                 except Exception:
                     break
-                time.sleep(0.1)
+                time.sleep(0.05)
 
-            # Agora tenta enviar comandos
+            # Restore blocking mode for try_commands which uses select itself
+            fcntl.fcntl(f.fileno(), fcntl.F_SETFL, flags)
+
+            # Now try to send commands
             if packets_received:
-                print(f"\n✓ Recebidos {len(packets_received)} pacotes durante inicialização")
-                print("\nAgora tentando forçar envio de bateria com comandos...")
+                print(f"\n✓ Received {len(packets_received)} packets during initialization")
+                print("\nNow attempting to force battery info reporting with commands...")
             else:
-                print("\n⚠ Nenhum pacote recebido automaticamente")
-                print("Tentando forçar com comandos...")
+                print("\n⚠ No packets received automatically")
+                print("Attempting to force with commands...")
 
             battery = try_commands(f)
 
             if battery is not None:
-                print(f"\n✅ SUCESSO! Bateria obtida: {battery}%")
+                print(f"\n✅ SUCCESS! Battery level obtained: {battery}%")
             else:
-                print("\n⚠ Não foi possível forçar o envio de bateria")
-                print("Os comandos tentados não funcionaram.")
-                print("\n💡 Dica: O dispositivo pode enviar bateria apenas:")
-                print("  - Durante inicialização (conexão)")
-                print("  - Quando você pressiona botões")
-                print("  - Em intervalos específicos")
+                print("\n⚠ Could not force battery info reporting")
+                print("The attempted commands did not work.")
+                print("\n💡 Tip: The device may send battery info only:")
+                print("  - During initialization (connection)")
+                print("  - When you press buttons")
+                print("  - At specific intervals")
 
-            # Continua monitorando
-            print("\n📡 Continuando monitoramento... (Ctrl+C para parar)")
+            # Continue monitoring
+            print("\n📡 Continuing monitoring... (Ctrl+C to stop)")
             print("=" * 60)
 
             last_battery = None
             while True:
                 try:
-                    f.settimeout(1.0)
-                    data = f.read(64)
-                    if data:
-                        data_bytes = list(data)
-                        hex_data = ' '.join([f'{b:02x}' for b in data_bytes])
-                        timestamp = time.strftime('%H:%M:%S')
+                    import select
+                    ready, _, _ = select.select([f], [], [], 1.0)
+                    if ready:
+                        data = f.read(64)
+                        if data:
+                            data_bytes = list(data)
+                            hex_data = ' '.join([f'{b:02x}' for b in data_bytes])
+                            timestamp = time.strftime('%H:%M:%S')
 
-                        if len(data_bytes) >= 2 and data_bytes[0] == 0x08 and 0 <= data_bytes[1] <= 100:
-                            battery = data_bytes[1]
-                            if battery != last_battery:
-                                print(f"[{timestamp}] ⚡ BATERIA: {battery}%")
-                                last_battery = battery
-                        else:
-                            print(f"[{timestamp}] Dados: {hex_data}")
-
+                            if len(data_bytes) >= 2 and data_bytes[0] == 0x08 and 0 <= data_bytes[1] <= 100:
+                                battery = data_bytes[1]
+                                if battery != last_battery:
+                                    print(f"[{timestamp}] ⚡ BATTERY: {battery}%")
+                                    last_battery = battery
+                            else:
+                                # Only print other data if it's not spamming
+                                pass
                 except Exception:
                     time.sleep(0.5)
 
     except PermissionError:
-        print(f"Erro: Permissão negada para {HIDRAW_DEVICE}")
-        print("Execute como root ou ajuste permissões")
+        print(f"Error: Permission denied for {hidraw_device}")
+        print("Run as root or adjust permissions")
         sys.exit(1)
     except KeyboardInterrupt:
-        print("\n\nInterrompido pelo usuário")
+        print("\n\nStopped by user")
     except Exception as e:
-        print(f"Erro: {e}")
+        print(f"Error: {e}")
         import traceback
         traceback.print_exc()
 
 
 if __name__ == "__main__":
     monitor_connection()
-

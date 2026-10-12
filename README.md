@@ -1,140 +1,140 @@
-# JBL Quantum910 Battery Tray (Linux)
+# JBL Quantum Battery Tray (Linux)
 
-Monitor de bateria **real** para o JBL Quantum910: mostra a **% da bateria no tray** e pode iniciar automaticamente no login via **`systemd --user`**.
+**Real** battery monitor for JBL Quantum 910 and 610 Wireless: shows **battery % in the tray** and can start automatically at login via **`systemd --user`**.
 
-O padrão de bateria confirmado para este headset é:
+The confirmed battery pattern for these headsets is:
 
 ```
 [Report ID, Battery%]
 08 1e => 30%
 ```
 
-## ✅ O que este projeto faz
+## ✅ What this project does
 
-- **Tray/AppIndicator**: mostra “30%” no tray e atualiza automaticamente.
-- **Leitura confiável**: usa o mesmo método do `jbl_battery_simple.py` (PyUSB, interface 3).
-- **Serviço no login**: instala como `systemd --user` (sem precisar de root rodando o app).
-- **Ferramentas e docs**: scripts de análise e documentação foram organizados em pastas.
+- **Tray/AppIndicator**: shows "30%" in the tray and updates automatically.
+- **Support**: JBL Quantum 910 Wireless and JBL Quantum 610 Wireless.
+- **Reliable reading**: uses the same method as `jbl_battery_simple.py` (PyUSB, interface 3).
+- **Service at login**: installs as `systemd --user` (no need for root running the app).
+- **Tools and docs**: analysis scripts and documentation organized in folders.
 
-## 📁 Estrutura do projeto
+## 📁 Project Structure
 
-- **`jbl_quantum910_tray.py`**: app do tray (principal)
-- **`install.sh` / `uninstall.sh`**: instala/remove como serviço no login
-- **`systemd/`**: unit file do `systemd --user`
-- **`autostart/`**: alternativa via `.desktop`
-- **`tools/`**: scripts auxiliares/experimentais de captura/análise
-- **`docs/`**: documentação detalhada (permissões, troubleshooting, etc.)
+- **`jbl_quantum_tray.py`**: tray app (main, supports 910 and 610)
+- **`install.sh` / `uninstall.sh`**: install/remove as a service at login
+- **`systemd/`**: `systemd --user` unit file
+- **`autostart/`**: alternative via `.desktop` file
+- **`tools/`**: auxiliary/experimental capture/analysis scripts
+- **`docs/`**: detailed documentation (permissions, troubleshooting, etc.)
 
-## ✅ Padrão de Bateria (confirmado)
+## ✅ Battery Pattern (confirmed for 910 and 610)
 
 - **Byte 0**: Report ID = `0x08`
-- **Byte 1**: bateria em % (0–100)
+- **Byte 1**: battery in % (0–100)
 
-Detalhes: `docs/PADRAO_BATERIA.md`.
+Details: `docs/BATTERY_PATTERN.md`.
 
-## 🚀 Início Rápido
+## 🚀 Quick Start
 
-### 1) Verificar permissões
+### 1) Check permissions
 
 ```bash
 ./check_permissions.sh
 ```
 
-### 2) Configurar permissões (recomendado)
+### 2) Configure permissions (recommended)
 
 ```bash
 sudo ./setup_udev_rules.sh
-# Depois desconecte e reconecte o fone
+# Then disconnect and reconnect the headset
 ```
 
-### 3) Rodar o tray
+### 3) Run the tray
 
 ```bash
-python3 ./jbl_quantum910_tray.py
+python3 ./jbl_quantum_tray.py
 ```
 
-Se você quiser testar só a leitura (CLI), use:
+If you want to test only the reading (CLI), use:
 
 ```bash
-sudo python3 ./jbl_battery_simple.py
+python3 ./jbl_battery_simple.py
 ```
 
-## 🔧 Requisitos
+## 🔧 Requirements
 
-### Dependências Python (CLI/leitura)
+### Python Dependencies (CLI/reading)
 
 ```bash
 pip3 install pyusb --user
-# ou
+# or
 pip3 install hidapi --user
 ```
 
-### Requisitos (Tray / AppIndicator)
+### Requirements (Tray / AppIndicator)
 
-Para o tray, a instalação é via pacotes do sistema (não via pip):
+For the tray, installation is via system packages (not via pip):
 
 ```bash
 sudo apt install -y python3-gi gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1
-# (em algumas distros pode ser: gir1.2-appindicator3-0.1)
+# (on some distros it may be: gir1.2-appindicator3-0.1)
 ```
 
-## 🖥️ Tray (AppIndicator) - Como usar
+## 🖥️ Tray (AppIndicator) - How to use
 
-### Executar manualmente
+### Run manually
 
 ```bash
-python3 ./jbl_quantum910_tray.py
+python3 ./jbl_quantum_tray.py
 ```
 
-Opções úteis:
+Useful options:
 
 ```bash
-python3 ./jbl_quantum910_tray.py --refresh 1.0
-python3 ./jbl_quantum910_tray.py --prefer-hidraw
+python3 ./jbl_quantum_tray.py --refresh 1.0
+python3 ./jbl_quantum_tray.py --prefer-hidraw
 ```
 
-## 📦 Instalação (recomendado) — inicia com o sistema (login)
+## 📦 Installation (recommended) — starts with the system (login)
 
-Isso instala como **serviço `systemd --user`** (inicia quando você faz login no desktop).
+This installs it as a **`systemd --user` service** (starts when you log into the desktop).
 
 ```bash
 chmod +x ./install.sh
 ./install.sh
 ```
 
-Para remover:
+To remove:
 
 ```bash
 chmod +x ./uninstall.sh
 ./uninstall.sh
 ```
 
-## 🧰 Ferramentas (scripts auxiliares)
+## 🧰 Tools (auxiliary scripts)
 
-Os scripts abaixo ficam em `tools/` e são úteis para análise/debug:
+The scripts below are in `tools/` and are useful for analysis/debug:
 
-- `tools/jbl_battery_hidraw.py`: dump/analise completa (tem `--log`)
-- `tools/jbl_battery_monitor.py`: alternativa via pyusb
-- `tools/jbl_battery_hidapi.py`: alternativa via hidapi
-- `tools/jbl_battery_capture.py`: captura na conexão/desconexão
-- `tools/jbl_battery_force.py`: força bruta/experimental
-- `tools/find_hidraw.py`: encontra o `/dev/hidrawX`
+- `tools/jbl_battery_hidraw.py`: full dump/analysis (has `--log`)
+- `tools/jbl_battery_monitor.py`: alternative via pyusb
+- `tools/jbl_battery_hidapi.py`: alternative via hidapi
+- `tools/jbl_battery_capture.py`: capture on connection/disconnection
+- `tools/jbl_battery_force.py`: brute force/experimental
+- `tools/find_hidraw.py`: finds the `/dev/hidrawX`
 
-## 📝 Notas
+## 📝 Notes
 
-- **IDs**: VID `0x0ecb` / PID `0x2088`
-- **HID**: interface 3, endpoint IN (usado pelo método `pyusb`)
-- **Atualização**: o headset pode ficar “quieto” — use o fone (volume/botões) pra gerar tráfego
-- **Permissões**: ideal é usar `setup_udev_rules.sh` para evitar `sudo`
+- **IDs**: VID `0x0ecb` / PIDs `0x2088` (910), `0x205c` (610)
+- **HID**: interface 3, endpoint IN (used by the `pyusb` method)
+- **Update**: the headset may remain "quiet" — use the headset (volume/buttons) to generate traffic
+- **Permissions**: it is ideal to use `setup_udev_rules.sh` to avoid `sudo`
 
 ## 🐛 Troubleshooting
 
-Veja:
+See:
 
 - `docs/TROUBLESHOOTING.md`
-- `docs/INSTRUCOES.md`
+- `docs/INSTRUCTIONS.md`
 
-## 📄 Licença
+## 📄 License
 
-Scripts criados para uso pessoal/educacional.
-
+Scripts created for personal/educational use.

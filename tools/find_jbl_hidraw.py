@@ -19,7 +19,7 @@ from pathlib import Path
 
 
 TARGET_VENDOR = 0x0ECB
-TARGET_PRODUCT = 0x2088
+TARGET_PRODUCTS = [0x2088, 0x205C]  # 910, 610
 
 
 def parse_hid_id(uevent_text: str) -> tuple[int, int] | None:
@@ -63,7 +63,7 @@ def _find_unbound_usb_hid_interfaces_for_target() -> list[str]:
             p = int(idp.read_text().strip(), 16)
         except Exception:
             continue
-        if v != TARGET_VENDOR or p != TARGET_PRODUCT:
+        if v != TARGET_VENDOR or p not in TARGET_PRODUCTS:
             continue
 
         # Interfaces aparecem como "<devname>:1.<n>"
@@ -154,8 +154,8 @@ def main() -> int:
             continue
 
         vendor, product = vid_pid
-        ok = (vendor == TARGET_VENDOR and product == TARGET_PRODUCT)
-        tag = "  <-- JBL Quantum910" if ok else ""
+        ok = (vendor == TARGET_VENDOR and product in TARGET_PRODUCTS)
+        tag = f"  <-- JBL Quantum {product:04x}" if ok else ""
 
         print(f"{devnode}: vid:pid={vendor:04x}:{product:04x} name={hid_name or '?'}{tag}")
         if ok:
@@ -166,7 +166,7 @@ def main() -> int:
         for d in matches:
             print(f"  - {d}")
     else:
-        print("\nNenhum /dev/hidrawX bateu com vid:pid 0ecb:2088.")
+        print(f"\nNenhum /dev/hidrawX bateu com vid:pid {TARGET_VENDOR:04x}:{TARGET_PRODUCTS}.")
         print("Se o fone estiver conectado, confira com: lsusb | grep -i 0ecb")
 
     return 0

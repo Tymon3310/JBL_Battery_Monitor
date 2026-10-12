@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 """
-Script para encontrar automaticamente qual hidraw corresponde ao JBL Quantum910
+Script to automatically find which hidraw corresponds to the JBL Quantum.
 """
 
 import os
 import sys
 
 VENDOR_ID = "0ecb"
-PRODUCT_ID = "2088"
+PRODUCT_IDS = ["2088", "205c"]  # 910, 610
 
 
 def find_jbl_hidraw():
-    """Encontra o hidraw correspondente ao JBL Quantum910"""
-    print("Procurando dispositivo JBL Quantum910...")
-    print(f"Vendor ID: 0x{VENDOR_ID}, Product ID: 0x{PRODUCT_ID}")
+    """Find the hidraw corresponding to the JBL Quantum."""
+    print("Searching for JBL Quantum device (910 or 610)...")
+    print(f"Vendor ID: 0x{VENDOR_ID}, Product IDs: {PRODUCT_IDS}")
     print()
 
-    # Procura em /sys/bus/hid/devices
+    # Search in /sys/bus/hid/devices
     hid_devices_path = "/sys/bus/hid/devices"
 
     if not os.path.exists(hid_devices_path):
-        print("Erro: /sys/bus/hid/devices não encontrado")
+        print("Error: /sys/bus/hid/devices not found")
         return None
 
     found_devices = []
@@ -41,11 +41,11 @@ def find_jbl_hidraw():
                 with open(product_file, 'r') as f:
                     product = f.read().strip().lower()
 
-                if vendor == VENDOR_ID and product == PRODUCT_ID:
-                    # Encontrou o dispositivo!
-                    print(f"✓ Dispositivo encontrado: {device_dir}")
+                if vendor == VENDOR_ID and product in PRODUCT_IDS:
+                    # Found the device!
+                    print(f"✓ Device found: {device_dir} (Product ID: {product})")
 
-                    # Procura o hidraw correspondente
+                    # Look for corresponding hidraw
                     hidraw_path = os.path.join(device_path, "hidraw")
                     if os.path.exists(hidraw_path):
                         hidraw_dirs = [d for d in os.listdir(hidraw_path) if d.startswith("hidraw")]
@@ -54,14 +54,14 @@ def find_jbl_hidraw():
                             hidraw_device = f"/dev/{hidraw_name}"
 
                             if os.path.exists(hidraw_device):
-                                print(f"✓ Hidraw encontrado: {hidraw_device}")
+                                print(f"✓ Hidraw found: {hidraw_device}")
 
-                                # Verifica permissões
+                                # Check permissions
                                 if os.access(hidraw_device, os.R_OK):
-                                    print(f"✓ Permissão de leitura: OK")
+                                    print(f"✓ Read permission: OK")
                                 else:
-                                    print(f"⚠ Permissão de leitura: NEGADA")
-                                    print(f"  Execute: sudo chmod 666 {hidraw_device}")
+                                    print(f"⚠ Read permission: DENIED")
+                                    print(f"  Run: sudo chmod 666 {hidraw_device}")
 
                                 found_devices.append({
                                     'device_dir': device_dir,
@@ -69,54 +69,54 @@ def find_jbl_hidraw():
                                     'hidraw_name': hidraw_name
                                 })
                             else:
-                                print(f"⚠ Hidraw {hidraw_device} não existe ainda")
+                                print(f"⚠ Hidraw {hidraw_device} does not exist yet")
                         else:
-                            print(f"⚠ Nenhum hidraw encontrado em {hidraw_path}")
+                            print(f"⚠ No hidraw found in {hidraw_path}")
                     else:
-                        print(f"⚠ Caminho hidraw não encontrado: {hidraw_path}")
+                        print(f"⚠ Hidraw path not found: {hidraw_path}")
             except Exception:
                 pass
 
-    # Se não encontrou, verifica lsusb
+    # If not found, check lsusb
     if not found_devices:
-        print("\n⚠ Dispositivo não encontrado em /sys/bus/hid/devices")
-        print("\nVerificando lsusb...")
+        print("\n⚠ Device not found in /sys/bus/hid/devices")
+        print("\nChecking lsusb...")
         import subprocess
         try:
             result = subprocess.run(['lsusb'], capture_output=True, text=True)
             if '0ecb' in result.stdout.lower() or 'jbl' in result.stdout.lower() or 'quantum' in result.stdout.lower():
-                print("✓ Dispositivo encontrado no lsusb:")
+                print("✓ Device found in lsusb:")
                 for line in result.stdout.split('\n'):
                     if '0ecb' in line.lower() or 'jbl' in line.lower() or 'quantum' in line.lower():
                         print(f"  {line}")
-                print("\n⚠ Mas não foi encontrado em /sys/bus/hid/devices")
-                print("  Isso pode significar que:")
-                print("  - O dispositivo ainda está sendo inicializado")
-                print("  - O driver HID não foi carregado")
-                print("  - Aguarde alguns segundos e tente novamente")
+                print("\n⚠ But it was not found in /sys/bus/hid/devices")
+                print("  This could mean:")
+                print("  - The device is still initializing")
+                print("  - The HID driver was not loaded")
+                print("  - Wait a few seconds and try again")
             else:
-                print("✗ Dispositivo não encontrado no lsusb")
-                print("\nPossíveis causas:")
-                print("1. O fone não está conectado via USB")
-                print("2. O cabo USB está com problema")
-                print("3. Tente desconectar e reconectar o fone")
+                print("✗ Device not found in lsusb")
+                print("\nPossible causes:")
+                print("1. The headset is not connected via USB")
+                print("2. The USB cable is faulty")
+                print("3. Try disconnecting and reconnecting the headset")
         except Exception:
             pass
 
         return None
 
     print(f"\n{'='*60}")
-    print(f"RESUMO")
+    print(f"SUMMARY")
     print(f"{'='*60}")
-    print(f"Dispositivos encontrados: {len(found_devices)}")
+    print(f"Devices found: {len(found_devices)}")
 
     for i, dev in enumerate(found_devices, 1):
-        print(f"\nDispositivo {i}:")
-        print(f"  Diretório: {dev['device_dir']}")
+        print(f"\nDevice {i}:")
+        print(f"  Directory: {dev['device_dir']}")
         print(f"  Hidraw: {dev['hidraw']}")
-        print(f"  Nome: {dev['hidraw_name']}")
+        print(f"  Name: {dev['hidraw_name']}")
 
-    # Retorna o primeiro (ou o único)
+    # Return the first (or only) one
     return found_devices[0]['hidraw'] if found_devices else None
 
 
@@ -125,13 +125,12 @@ if __name__ == "__main__":
 
     if hidraw:
         print(f"\n{'='*60}")
-        print(f"✅ USE ESTE HIDRAW:")
+        print(f"✅ USE THIS HIDRAW:")
         print(f"   {hidraw}")
         print(f"{'='*60}")
-        print(f"\nPara usar nos scripts, edite a variável HIDRAW_DEVICE:")
+        print(f"\nTo use in scripts, edit the HIDRAW_DEVICE variable:")
         print(f"  HIDRAW_DEVICE = \"{hidraw}\"")
-        print(f"\nOu execute os scripts que detectam automaticamente.")
+        print(f"\nOr run scripts that detect it automatically.")
     else:
-        print("\n❌ Não foi possível encontrar o dispositivo")
+        print("\n❌ Could not find the device")
         sys.exit(1)
-

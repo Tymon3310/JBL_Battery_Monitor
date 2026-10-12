@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=JBL Quantum910 Battery Tray
-Comment=Mostra a % da bateria do JBL Quantum910 no tray
-Exec=sh -lc "$HOME/.local/bin/jbl-quantum910-tray"
-Terminal=false
-Categories=Utility;
-X-GNOME-Autostart-enabled=true
-

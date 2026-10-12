@@ -1,158 +1,157 @@
-# Troubleshooting - Erros Comuns
+# Troubleshooting - Common Errors
 
-## Erro: `[Errno 5] Input/output error`
+## Error: `[Errno 5] Input/output error`
 
-### Causa
-Este erro geralmente ocorre quando:
-1. O dispositivo está sendo usado por outro programa
-2. O dispositivo foi desconectado durante a leitura
-3. O driver do kernel está controlando o dispositivo
-4. Há conflito de acesso ao dispositivo
+### Cause
+This error usually occurs when:
+1. The device is being used by another program.
+2. The device was disconnected during reading.
+3. The kernel driver is controlling the device.
+4. There is a conflict in accessing the device.
 
-### Soluções
+### Solutions
 
-#### 1. Verificar se outro programa está usando o dispositivo
+#### 1. Check if another program is using the device
 
 ```bash
-# Ver processos usando o dispositivo
-lsof /dev/hidraw5
-# ou
-fuser /dev/hidraw5
+# See processes using the device
+lsof /dev/hidrawX
+# or
+fuser /dev/hidrawX
 ```
 
-Se houver processos, encerre-os:
+If there are processes, terminate them:
 ```bash
 sudo kill <PID>
 ```
 
-#### 2. Verificar se o dispositivo está conectado
+#### 2. Check if the device is connected
 
 ```bash
-lsusb | grep JBL
-ls -la /dev/hidraw5
+lsusb | grep 0ecb
+ls -la /dev/hidraw*
 ```
 
-Se não aparecer, o dispositivo foi desconectado.
+If it doesn't appear, the device was disconnected.
 
-#### 3. Desanexar driver do kernel (se usar pyusb)
+#### 3. Detach kernel driver (if using pyusb)
 
 ```bash
-# Verificar qual driver está usando
+# Check which driver is using it
 lsmod | grep usbhid
 
-# Desanexar (pode ser necessário)
+# Detach (may be necessary)
 sudo modprobe -r usbhid
 sudo modprobe usbhid
 ```
 
-**Cuidado:** Isso pode afetar outros dispositivos USB HID.
+**Caution:** This may affect other USB HID devices.
 
-#### 4. Reiniciar o dispositivo
+#### 4. Reset the device
 
-1. Desconecte o fone USB
-2. Aguarde 2 segundos
-3. Reconecte o fone USB
-4. Execute o script novamente
+1. Disconnect the USB headset.
+2. Wait 2 seconds.
+3. Reconnect the USB headset.
+4. Run the script again.
 
-#### 5. Verificar permissões
+#### 5. Check permissions
 
 ```bash
-ls -la /dev/hidraw5
-# Deve mostrar: crw-rw-rw- ou crw-rw----
+ls -la /dev/hidrawX
+# Should show: crw-rw-rw- or crw-rw----
 
-# Se não tiver permissão:
-sudo chmod 666 /dev/hidraw5
+# If you don't have permission:
+sudo chmod 666 /dev/hidrawX
 ```
 
-#### 6. Usar script que não precisa de pyusb
+#### 6. Use scripts that do not require pyusb
 
-Se o erro ocorrer com `jbl_battery_monitor.py` (pyusb), use:
+If the error occurs with `tools/jbl_battery_monitor.py` (pyusb), use:
 
+```bash
+python3 jbl_battery_simple.py
+# or
+sudo python3 tools/jbl_battery_hidraw.py
+```
+
+These scripts use hidraw directly and are more stable.
+
+## Error: `Permission denied`
+
+### Solution
 ```bash
 sudo python3 jbl_battery_simple.py
-# ou
-sudo python3 jbl_battery_hidraw.py
 ```
 
-Estes scripts usam hidraw diretamente e são mais estáveis.
+Or configure udev rules (see `setup_udev_rules.sh`).
 
-## Erro: `Permission denied`
+## Error: `ModuleNotFoundError: No module named 'usb'`
 
-### Solução
+### Solution
 ```bash
-sudo python3 jbl_battery_simple.py
-```
-
-Ou configure regras udev (veja `setup_udev_rules.sh).
-
-## Erro: `ModuleNotFoundError: No module named 'usb'`
-
-### Solução
-```bash
-# Para usuário normal
+# For normal user
 pip3 install pyusb --user
 
-# Para root (se usar sudo)
+# For root (if using sudo)
 sudo pip3 install pyusb
 ```
 
-Ou use scripts que não precisam de pyusb:
+Or use scripts that do not require pyusb:
 ```bash
-sudo python3 jbl_battery_simple.py
+python3 jbl_battery_simple.py
 ```
 
-## Dispositivo não envia dados
+## Device does not send data
 
-### Possíveis causas:
-1. Dispositivo não está enviando periodicamente
-2. Precisa pressionar botões para ativar
-3. Dispositivo em modo de economia de energia
+### Possible causes:
+1. Device is not sending periodically.
+2. Needs button press to activate.
+3. Device in power saving mode.
 
-### Soluções:
-1. **Aguarde** - O dispositivo envia a cada 7-11 segundos
-2. **Pressione botões** do fone para ativar comunicação
-3. **Use o fone** - Reproduza áudio, ajuste volume
-4. **Reconecte** o dispositivo
+### Solutions:
+1. **Wait** - The device sends every 7-11 seconds.
+2. **Press buttons** on the headset to trigger communication.
+3. **Use the headset** - Play audio, adjust volume.
+4. **Reconnect** the device.
 
-## Script trava ou não responde
+## Script hangs or does not respond
 
-### Solução:
-1. Pressione `Ctrl+C` para interromper
-2. Verifique se o dispositivo está conectado
-3. Reinicie o script
+### Solution:
+1. Press `Ctrl+C` to interrupt.
+2. Check if the device is connected.
+3. Restart the script.
 
-## Múltiplos erros de I/O
+## Multiple I/O Errors
 
-Se você receber muitos erros de I/O:
+If you receive many I/O errors:
 
-1. **Desconecte e reconecte** o fone
-2. **Reinicie o script**
-3. **Verifique** se há outros programas usando o dispositivo:
+1. **Disconnect and reconnect** the headset.
+2. **Restart the script**.
+3. **Check** if there are other programs using the device:
    ```bash
    ps aux | grep -i jbl
    ps aux | grep -i quantum
    ```
 
-## Dicas Gerais
+## General Tips
 
-1. **Use `jbl_battery_simple.py`** - É o mais estável
-2. **Execute com sudo** - Evita problemas de permissão
-3. **Aguarde alguns segundos** - O dispositivo envia periodicamente
-4. **Não use múltiplos scripts ao mesmo tempo** - Pode causar conflito
+1. **Use `jbl_battery_simple.py`** - It is the most stable.
+2. **Run with sudo** (if udev rules are not set) - Avoids permission problems.
+3. **Wait a few seconds** - The device sends periodically.
+4. **Do not use multiple scripts at the same time** - May cause conflict.
 
-## Se Nada Funcionar
+## If Nothing Works
 
-1. Desconecte o fone
-2. Aguarde 5 segundos
-3. Reconecte o fone
-4. Aguarde 2 segundos
-5. Execute:
+1. Disconnect the headset.
+2. Wait 5 seconds.
+3. Reconnect the headset.
+4. Wait 2 seconds.
+5. Run:
    ```bash
-   sudo python3 jbl_battery_simple.py
+   python3 jbl_battery_simple.py
    ```
 
-Se ainda não funcionar, verifique:
-- Se o dispositivo aparece em `lsusb`
-- Se o hidraw existe: `ls -la /dev/hidraw*`
-- Se há erros no dmesg: `dmesg | tail -20`
-
+If it still doesn't work, check:
+- If the device appears in `lsusb`.
+- If the hidraw exists: `ls -la /dev/hidraw*`.
+- If there are errors in dmesg: `dmesg | tail -20`.

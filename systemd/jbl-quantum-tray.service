@@ -1,0 +1,12 @@
+[Unit]
+Description=JBL Quantum Battery Tray
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/jbl-quantum-tray --prefer-hidraw
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Script para ler dados do JBL Quantum910 sem desanexar o driver do kernel
-Usa uma abordagem mais passiva para monitorar comunicação
+Script to read JBL Quantum910 data without detaching the kernel driver.
+Uses a more passive approach to monitor communication.
 """
 
 import usb.core
@@ -11,118 +11,122 @@ import time
 import struct
 
 VENDOR_ID = 0x0ecb
-PRODUCT_ID = 0x2088
+PRODUCT_IDS = [0x2088, 0x205c]  # 910, 610
 
 
 def find_device():
-    """Encontra o dispositivo USB"""
-    device = usb.core.find(idVendor=VENDOR_ID, idProduct=PRODUCT_ID)
+    """Finds the USB device"""
+    device = None
+    for pid in PRODUCT_IDS:
+        device = usb.core.find(idVendor=VENDOR_ID, idProduct=pid)
+        if device:
+            break
     if device is None:
-        raise ValueError("Dispositivo não encontrado. Certifique-se de que o fone está conectado.")
+        raise ValueError("Device not found. Make sure the headset is connected.")
     return device
 
 
 def get_device_info(device):
-    """Obtém informações do dispositivo"""
+    """Gets device information"""
     print("=" * 60)
-    print("Informações do Dispositivo")
+    print("Device Information")
     print("=" * 60)
     print(f"Vendor ID: 0x{device.idVendor:04x}")
     print(f"Product ID: 0x{device.idProduct:04x}")
     try:
-        print(f"Fabricante: {usb.util.get_string(device, device.iManufacturer)}")
+        print(f"Manufacturer: {usb.util.get_string(device, device.iManufacturer)}")
     except Exception:
-        print(f"Fabricante: (não disponível)")
+        print(f"Manufacturer: (not available)")
     try:
-        print(f"Produto: {usb.util.get_string(device, device.iProduct)}")
+        print(f"Product: {usb.util.get_string(device, device.iProduct)}")
     except Exception:
-        print(f"Produto: (não disponível)")
+        print(f"Product: (not available)")
     print()
 
-    # Informações da interface HID
+    # HID interface information
     try:
         cfg = device.get_active_configuration()
         intf = cfg[(3, 0)]
-        print(f"Interface HID: {intf.bInterfaceNumber}")
+        print(f"HID Interface: {intf.bInterfaceNumber}")
         print(f"Endpoints: {len(intf)}")
         for ep in intf:
             print(
                 f"  - Endpoint 0x{ep.bEndpointAddress:02x}: "
                 f"{'IN' if usb.util.endpoint_direction(ep.bEndpointAddress) == usb.util.ENDPOINT_IN else 'OUT'}, "
-                f"Tamanho máximo: {ep.wMaxPacketSize} bytes"
+                f"Maximum size: {ep.wMaxPacketSize} bytes"
             )
     except Exception as e:
-        print(f"Erro ao obter informações da interface: {e}")
+        print(f"Error getting interface information: {e}")
     print("=" * 60)
     print()
 
 
 def try_read_without_claim(device):
-    """Tenta ler dados sem reivindicar a interface"""
-    print("Tentando ler dados sem desanexar driver...")
-    print("(Pode ser necessário executar como root)")
+    """Tries to read data without claiming the interface"""
+    print("Trying to read data without detaching driver...")
+    print("(May need to be run as root)")
     print()
 
     try:
-        # Tenta acessar o endpoint diretamente
+        # Tries to access the endpoint directly
         cfg = device.get_active_configuration()
         intf = cfg[(3, 0)]
-        endpoint = intf[0]  # Primeiro endpoint (geralmente o IN)
+        endpoint = intf[0]  # First endpoint (usually the IN)
 
         print(f"Endpoint: 0x{endpoint.bEndpointAddress:02x}")
-        print(f"Tamanho máximo: {endpoint.wMaxPacketSize} bytes")
+        print(f"Maximum size: {endpoint.wMaxPacketSize} bytes")
         print()
-        print("Monitorando... (Pressione Ctrl+C para parar)")
+        print("Monitoring... (Press Ctrl+C to stop)")
         print()
 
         battery_level = None
 
-        for i in range(100):  # Tenta ler 100 vezes
+        for i in range(100):  # Tries to read 100 times
             try:
-                # Tenta ler com timeout curto
+                # Tries to read with short timeout
                 data = device.read(endpoint.bEndpointAddress, endpoint.wMaxPacketSize, 100)
                 data_bytes = list(data)
 
                 hex_data = ' '.join([f'{b:02x}' for b in data_bytes])
-                print(f"[{time.strftime('%H:%M:%S')}] Dados ({len(data_bytes)} bytes): {hex_data}")
+                print(f"[{time.strftime('%H:%M:%S')}] Data ({len(data_bytes)} bytes): {hex_data}")
                 print(f"  Bytes: {data_bytes}")
 
-                # Tenta interpretar bateria
+                # Tries to interpret battery
                 for j, byte in enumerate(data_bytes):
                     if 0 <= byte <= 100:
                         if battery_level != byte:
                             battery_level = byte
-                            print(f"  ⚡ Nível de bateria: {battery_level}% (posição {j})")
+                            print(f"  ⚡ Battery level: {battery_level}% (position {j})")
 
                 if len(data_bytes) >= 2:
                     val_16 = struct.unpack('<H', bytes(data_bytes[:2]))[0]
                     if 0 <= val_16 <= 100 and battery_level != val_16:
                         battery_level = val_16
-                        print(f"  ⚡ Nível de bateria (16-bit): {battery_level}%")
+                        print(f"  ⚡ Battery level (16-bit): {battery_level}%")
 
                 print()
 
             except usb.core.USBError as e:
                 if e.errno == 110:  # ETIMEDOUT
                     if i % 10 == 0:
-                        print(f"[{time.strftime('%H:%M:%S')}] Aguardando dados... (tentativa {i+1})")
+                        print(f"[{time.strftime('%H:%M:%S')}] Waiting for data... (attempt {i+1})")
                 elif e.errno == 13:  # Permission denied
-                    print(f"Erro de permissão: {e}")
-                    print("Tente executar como root: sudo python3 jbl_battery_readonly.py")
+                    print(f"Permission error: {e}")
+                    print("Try running as root: sudo python3 jbl_battery_readonly.py")
                     break
                 else:
-                    print(f"Erro USB: {e}")
+                    print(f"USB Error: {e}")
 
             time.sleep(0.5)
 
     except Exception as e:
-        print(f"Erro: {e}")
+        print(f"Error: {e}")
         import traceback
         traceback.print_exc()
 
 
 def main():
-    print("JBL Quantum910 - Monitor de Bateria (Modo Read-Only)")
+    print("JBL Quantum - Battery Monitor (Read-Only Mode)")
     print("=" * 60)
     print()
 
@@ -132,10 +136,10 @@ def main():
         try_read_without_claim(device)
 
     except ValueError as e:
-        print(f"Erro: {e}")
+        print(f"Error: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"Erro inesperado: {e}")
+        print(f"Unexpected error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
@@ -143,4 +147,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

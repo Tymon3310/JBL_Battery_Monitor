@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=JBL Quantum Battery Tray
+Comment=Shows JBL Quantum battery % in the tray
+Exec=sh -lc "$HOME/.local/bin/jbl-quantum-tray --prefer-hidraw"
+Icon=battery-good-symbolic
+Terminal=false
+Categories=Utility;
+X-GNOME-Autostart-enabled=true

@@ -10,14 +10,18 @@ import sys
 import time
 import struct
 
-# IDs do dispositivo JBL Quantum910
+# IDs do dispositivo JBL Quantum
 VENDOR_ID = 0x0ecb
-PRODUCT_ID = 0x2088
+PRODUCT_IDS = [0x2088, 0x205c]  # 910, 610
 
 
 def find_device():
     """Encontra o dispositivo USB"""
-    device = usb.core.find(idVendor=VENDOR_ID, idProduct=PRODUCT_ID)
+    device = None
+    for pid in PRODUCT_IDS:
+        device = usb.core.find(idVendor=VENDOR_ID, idProduct=pid)
+        if device:
+            break
     if device is None:
         raise ValueError("Dispositivo não encontrado. Certifique-se de que o fone está conectado.")
     return device

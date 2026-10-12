@@ -1,86 +1,86 @@
 #!/bin/bash
-# Script para verificar permissões e configuração do dispositivo JBL Quantum910
+# Script to check permissions and configuration for JBL Quantum devices
 
-echo "=== Verificação de Permissões JBL Quantum910 ==="
+echo "=== JBL Quantum Permission Check ==="
 echo
 
-# Verifica se o dispositivo está conectado
-echo "1. Verificando se o dispositivo está conectado..."
-if lsusb | grep -q "0ecb:2088"; then
-    echo "   ✓ Dispositivo encontrado"
-    lsusb | grep "0ecb:2088"
+# Check if the device is connected
+echo "1. Checking if the device is connected..."
+if lsusb | grep -qE "0ecb:(2088|205c)"; then
+    echo "   ✓ Device found"
+    lsusb | grep -E "0ecb:(2088|205c)"
 else
-    echo "   ✗ Dispositivo não encontrado"
-    echo "   Conecte o fone JBL Quantum910 via USB"
+    echo "   ✗ Device not found"
+    echo "   Connect the JBL Quantum (910 or 610) headset via USB"
     exit 1
 fi
 
 echo
 
-# Verifica permissões do dispositivo USB
-echo "2. Verificando permissões do dispositivo USB..."
-DEVICE_PATH=$(lsusb | grep "0ecb:2088" | head -1 | sed 's/.*Bus \([0-9]*\) Device \([0-9]*\).*/\/dev\/bus\/usb\/\1\/\2/')
+# Check USB device permissions
+echo "2. Checking USB device permissions..."
+DEVICE_PATH=$(lsusb | grep -E "0ecb:(2088|205c)" | head -1 | sed 's/.*Bus \([0-9]*\) Device \([0-9]*\).*/\/dev\/bus\/usb\/\1\/\2/')
 if [ -e "$DEVICE_PATH" ]; then
     PERMS=$(stat -c "%a" "$DEVICE_PATH" 2>/dev/null)
     OWNER=$(stat -c "%U" "$DEVICE_PATH" 2>/dev/null)
-    echo "   Caminho: $DEVICE_PATH"
-    echo "   Permissões: $PERMS"
-    echo "   Proprietário: $OWNER"
+    echo "   Path: $DEVICE_PATH"
+    echo "   Permissions: $PERMS"
+    echo "   Owner: $OWNER"
     
     if [ "$PERMS" = "666" ] || [ "$PERMS" = "664" ]; then
-        echo "   ✓ Permissões adequadas"
+        echo "   ✓ Adequate permissions"
     else
-        echo "   ⚠ Permissões podem ser insuficientes"
-        echo "   Execute: sudo chmod 666 $DEVICE_PATH"
+        echo "   ⚠ Permissions may be insufficient"
+        echo "   Run: sudo chmod 666 $DEVICE_PATH"
     fi
 else
-    echo "   ⚠ Caminho do dispositivo não encontrado"
+    echo "   ⚠ Device path not found"
 fi
 
 echo
 
-# Verifica se o usuário está no grupo plugdev
-echo "3. Verificando grupo do usuário..."
+# Check user group
+echo "3. Checking user group..."
 if groups | grep -q plugdev; then
-    echo "   ✓ Usuário está no grupo plugdev"
+    echo "   ✓ User is in the plugdev group"
 else
-    echo "   ⚠ Usuário não está no grupo plugdev"
-    echo "   Execute: sudo usermod -a -G plugdev $USER"
-    echo "   (depois faça logout e login)"
+    echo "   ⚠ User is not in the plugdev group"
+    echo "   Run: sudo usermod -a -G plugdev $USER"
+    echo "   (then logout and login)"
 fi
 
 echo
 
-# Verifica regras udev
-echo "4. Verificando regras udev..."
-if [ -f "/etc/udev/rules.d/99-jbl-quantum910.rules" ]; then
-    echo "   ✓ Regra udev encontrada"
-    cat /etc/udev/rules.d/99-jbl-quantum910.rules
+# Check udev rules
+echo "4. Checking udev rules..."
+if [ -f "/etc/udev/rules.d/99-jbl-quantum.rules" ] || [ -f "/etc/udev/rules.d/99-jbl-quantum910.rules" ]; then
+    echo "   ✓ udev rule found"
+    cat /etc/udev/rules.d/99-jbl-quantum*.rules
 else
-    echo "   ⚠ Regra udev não encontrada"
-    echo "   Crie: /etc/udev/rules.d/99-jbl-quantum910.rules"
-    echo "   Com conteúdo:"
+    echo "   ⚠ udev rule not found"
+    echo "   Create: /etc/udev/rules.d/99-jbl-quantum.rules"
+    echo "   With content:"
     echo "   SUBSYSTEM==\"usb\", ATTR{idVendor}==\"0ecb\", ATTR{idProduct}==\"2088\", MODE=\"0666\""
+    echo "   SUBSYSTEM==\"usb\", ATTR{idVendor}==\"0ecb\", ATTR{idProduct}==\"205c\", MODE=\"0666\""
 fi
 
 echo
 
-# Verifica bibliotecas Python
-echo "5. Verificando bibliotecas Python..."
+# Check Python libraries
+echo "5. Checking Python libraries..."
 if python3 -c "import usb.core" 2>/dev/null; then
-    echo "   ✓ pyusb instalado"
+    echo "   ✓ pyusb installed"
 else
-    echo "   ⚠ pyusb não instalado"
-    echo "   Execute: pip3 install pyusb --user"
+    echo "   ⚠ pyusb not installed"
+    echo "   Run: pip3 install pyusb --user"
 fi
 
 if python3 -c "import hid" 2>/dev/null; then
-    echo "   ✓ hidapi instalado"
+    echo "   ✓ hidapi installed"
 else
-    echo "   ⚠ hidapi não instalado"
-    echo "   Execute: pip3 install hidapi --user"
+    echo "   ⚠ hidapi not installed"
+    echo "   Run: pip3 install hidapi --user"
 fi
 
 echo
-echo "=== Fim da Verificação ==="
-
+echo "=== End of Check ==="

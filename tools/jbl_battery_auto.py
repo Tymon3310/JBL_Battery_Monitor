@@ -10,11 +10,11 @@ import time
 import glob
 
 VENDOR_ID = "0ecb"
-PRODUCT_ID = "2088"
+PRODUCT_IDS = ["2088", "205c"]  # 910, 610
 
 
 def find_hidraw_device():
-    """Encontra automaticamente qual hidraw corresponde ao JBL Quantum910"""
+    """Encontra automaticamente qual hidraw corresponde ao JBL Quantum"""
     # Método 1: Procura em /sys/bus/hid/devices
     for device_dir in glob.glob("/sys/bus/hid/devices/*"):
         vendor_file = os.path.join(device_dir, "idVendor")
@@ -27,7 +27,7 @@ def find_hidraw_device():
                 with open(product_file, 'r') as f:
                     product = f.read().strip().lower()
 
-                if vendor == VENDOR_ID and product == PRODUCT_ID:
+                if vendor == VENDOR_ID and product in PRODUCT_IDS:
                     # Encontrou! Procura o hidraw
                     hidraw_path = os.path.join(device_dir, "hidraw")
                     if os.path.exists(hidraw_path):
@@ -80,7 +80,7 @@ def check_permissions(hidraw_device):
 
 def read_battery():
     """Lê e exibe o nível de bateria"""
-    print("JBL Quantum910 - Monitor de Bateria (Detecção Automática)")
+    print("JBL Quantum - Monitor de Bateria (Detecção Automática)")
     print("=" * 60)
 
     # Detecta o dispositivo
@@ -88,7 +88,7 @@ def read_battery():
     hidraw_device = find_hidraw_device()
 
     if not hidraw_device:
-        print("\n✗ Dispositivo JBL Quantum910 não encontrado")
+        print("\n✗ Dispositivo JBL Quantum não encontrado")
         print("\nPossíveis causas:")
         print("1. O fone não está conectado via USB")
         print("2. O dispositivo não está sendo reconhecido como HID")
