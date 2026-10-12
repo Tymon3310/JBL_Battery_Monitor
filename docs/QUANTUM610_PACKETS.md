@@ -303,7 +303,7 @@ report ID, `Pack=1`). ✅ = verified live on this 610, ❌ = fallback
 | `0x29`/`0x54` | Get/Set | 63/2 | button-gesture mapping / 360 variant | ❌ |
 | `0x45`/`0x46` | Get/Set | 1 | ANC state (610 has no ANC) | ❌ |
 | `0x47` | Get/Set | 1 | BT state | ❌ |
-| `0x48` | Get/Set | 15 | speaker EQ bands | ❌ |
+| `0x48` | Get/Set | 15 | speaker EQ bands — see note below | ❌ on-dongle (host-side APO) |
 | `0x49` | Get | 1 | battery % | ✅ |
 | `0x4A`/`0x4B` | Get/Set | 1 | lighting on/off | ✅ |
 | `0x4C`/`0x4D` | Set (+keyed Get) | 3/7 | lighting animation / key frames | ✅ Set |
@@ -325,13 +325,26 @@ report ID, `Pack=1`). ✅ = verified live on this 610, ❌ = fallback
 | `0x6D`/`0x6E` | Get/Set | 1 | voice-prompt state | ❌ |
 | `0x6F` | Cmd | 1 | head-tracking calibration | ❌ |
 | `0x70` | Get/Set | 2 | find-my-device ring | ❌ |
-| `0x72` | Get/Out-Set | 2 | surround/DTS mode | ? |
+| `0x72` | Get/Out-Set | 2 | surround/DTS mode — see note below | ? (APO-side; HID untested) |
 | `0x75` | Get/Set | 1 | standby timer (this unit: 6) | ✅ Get / ? Set |
 | `0x76` | Get/Set | 1 | mic polar pattern | ❌ |
 | `0x77` | Get/Set | 1 | LED brightness | ❌ |
 | `0x78` | Get/Set | 3 | mic-level LED color | ❌ |
 | `0x79` | Get/Set | 1 | VU-meter LED | ❌ |
-| `0x2F` | In/Out | 1–8 | telephony + mute LED | ✅ |
+| `0x2F` | In/Out | 1–8 | telephony + mute LED | ✅ (note: absent from 2.8.6 managed code — server-side/deprecated path) |
+
+**App-side truth** (`ProductQ610`, `Q610/ProductUI`, `EqConfig-Q610.xml`,
+2026-10-12): the app drives the 610 with render EQ (Q910-series 19×10-band
+presets, default FLAT) + capture/mic EQ + AE mic DSP (noise gate/NR/DRC) +
+HarmanX spatial/DTS — **all host-side via Windows APO** (`apo/`), which is
+why `0x48` is unimplemented on the dongle. Lighting = logo zone only
+(effects limited to Breathing/Glitch/Solid/Wave in UI). Also app-side:
+sidetone, balance, mute, standby (=AutoPowerOff HIDV1), battery, FW update
+(dongle CHIP_DONGLE + headset CHIP_HEADSET = the two `.qfp` entries),
+factory reset. Hard NOTs for the 610: ANC, Bluetooth HID, gesture mapping,
+head-tracking/recenter/calibration, AINR, HIDV2/V3, polar pattern, VU meter,
+voice prompts (no such feature exists for any product). Q610 EQ flavor
+(`EqConfig-Q610.xml`): L/R +3.5 dB@360 Hz, −2 dB@2 kHz, +5 dB@13 kHz.
 
 ## 11. Firmware: readout, update, custom builds (2026-10-12, updated)
 
