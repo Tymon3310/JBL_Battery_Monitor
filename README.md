@@ -1,4 +1,4 @@
-# JBL Quantum Battery Tray (Linux)
+# JBL Quantum Linux (tray, protocol + RGB)
 
 **Real** battery monitor for JBL Quantum 910 and 610 Wireless: shows **battery % in the tray** and can start automatically at login via **`systemd --user`**.
 
