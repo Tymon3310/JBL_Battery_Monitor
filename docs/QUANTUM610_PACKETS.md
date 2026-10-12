@@ -333,20 +333,27 @@ report ID, `Pack=1`). ✅ = verified live on this 610, ❌ = fallback
 | `0x79` | Get/Set | 1 | VU-meter LED | ❌ |
 | `0x2F` | In/Out | 1–8 | telephony + mute LED | ✅ |
 
-## 11. Firmware: readout, update, custom builds (2026-10-12)
+## 11. Firmware: readout, update, custom builds (2026-10-12, updated)
 
 * **Dump from device: impossible.** No flash-read report exists — `0x54`
   (`FIRMWARE_BLOCK`: chip + u32 size + u32 offset + 54 B data) is
   **write-only**, and there is no 610 DFU USB PID (no `8284/8283` entry in
   `ProductID.DFU_CONFIG`; DFU PIDs exist only for TWS models). The only
   readout is the version string (`0x51`).
-* **Get the image**: only by intercepting an official update — images ship
-  from Harman cloud (`appstorage.onecloud.harman.com`, cf.
-  `GameDetectionCloudConfigController`), no FW files in the installer (only
-  DSP `.bin`s), no URLs in updater strings. Would take Windows + MITM proxy
-  during a real update.
-* **Decompile/custom FW: no.** The image would be a signed Airoha blob with
-  no public toolchain; `AirohaHidCoreLib.dll` is EQ-only. Stock 1.9.2 stands.
+* **Image obtained anyway** — from Harman's own CDN (endpoint RE'd from
+  `SwUpdateConfig` + PID probing; fota root is bucket-denied but
+  `fota/<pid>/fota_config.json` is open):
+  `fota/205c/fota_config.json` → `JBL_QUANTUM610_V1.9.2.qfp` (2,478,704 B,
+  SHA256 matches manifest; device already runs 1.9.2 = no update pending).
+  Saved to `~/Downloads/`.
+* **Container mapped** (`HUI ` magic, fmt 1, 2 entries): entry1 ~1,003,184 B
+  @0x70, entry2 ~1,003,264 B @0x168370 (sums exactly to EOF; gap is 0xFF
+  flash-erase padding). Each entry: u32 size, ver `02.09.01`, 16 B hash.
+  Plaintext strings leak `ab1565d!` (Airoha AB1565 SoC) and
+  `dongle_ref_design` — but both blobs are **encrypted** (no ARM vectors,
+  no valid compression streams, high entropy). Key lives in bootloader.
+* **Decompile/custom FW: no.** Decryption needs the device key (SWD/physical
+  attack territory) and images are signed. Stock 1.9.2 stands.
 * Safe, useful, still-untested: software mic-mute (`SET 0x67`), chat-balance
   set (`SET 0x6C`), sidetone set (`0x5D`), standby-timer set (`0x75`) — all
   1-byte, reversible. See §12 for results.
