@@ -1,0 +1,528 @@
+{
+  "0x02": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    },
+    "input:4": {
+      "ok": false,
+      "len": 4,
+      "hex": "2f 00 fe 0d",
+      "fallback": true
+    },
+    "feature:4": {
+      "ok": false,
+      "len": 4,
+      "hex": "2f 00 fe 0d",
+      "fallback": true
+    }
+  },
+  "0x06": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    },
+    "input:62": {
+      "ok": false,
+      "len": 62,
+      "hex": "2f 00 fe 0d 95 68 86 2d 4c 4c 30 30 31 32 36 30 35 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "fallback": true
+    },
+    "feature:62": {
+      "ok": false,
+      "len": 62,
+      "hex": "2f 00 fe 0d 95 68 86 2d 4c 4c 30 30 31 32 36 30 35 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "fallback": true
+    }
+  },
+  "0x07": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    }
+  },
+  "0x08": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    }
+  },
+  "0x09": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    }
+  },
+  "0x10": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    }
+  },
+  "0x11": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": true
+    }
+  },
+  "0x12": {
+    "input:3": {
+      "ok": false,
+      "len": 3,
+      "hex": "2f 00 fe",
+      "fallback": true
+    },
+    "feature:3": {
+      "ok": false,
+      "len": 3,
+      "hex": "2f 00 fe",
+      "fallback": true
+    }
+  },
+  "0x2f": {
+    "input:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": false
+    },
+    "feature:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "2f 00",
+      "fallback": false
+    },
+    "input:9": {
+      "ok": true,
+      "len": 9,
+      "hex": "2f 00 fe 0d 95 68 86 2d 4c",
+      "fallback": false
+    },
+    "feature:9": {
+      "ok": true,
+      "len": 9,
+      "hex": "2f 00 fe 0d 95 68 86 2d 4c",
+      "fallback": false
+    }
+  },
+  "0x49": {
+    "input:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "49 5a",
+      "fallback": false
+    },
+    "feature:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "49 5a",
+      "fallback": false
+    }
+  },
+  "0x4a": {
+    "input:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "4a 01",
+      "fallback": false
+    },
+    "feature:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "4a 01",
+      "fallback": false
+    }
+  },
+  "0x4b": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "4a 01",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "4a 01",
+      "fallback": true
+    }
+  },
+  "0x4c": {
+    "input:4": {
+      "ok": false,
+      "len": 4,
+      "hex": "4a 01 fe 0d",
+      "fallback": true
+    },
+    "feature:4": {
+      "ok": false,
+      "len": 4,
+      "hex": "4a 01 fe 0d",
+      "fallback": true
+    }
+  },
+  "0x4d": {
+    "input:8": {
+      "ok": false,
+      "len": 8,
+      "hex": "4a 01 fe 0d 95 68 86 2d",
+      "fallback": true
+    },
+    "feature:8": {
+      "ok": false,
+      "len": 8,
+      "hex": "4a 01 fe 0d 95 68 86 2d",
+      "fallback": true
+    }
+  },
+  "0x50": {
+    "input:3": {
+      "ok": true,
+      "len": 3,
+      "hex": "50 01 10",
+      "fallback": false
+    },
+    "feature:3": {
+      "ok": true,
+      "len": 3,
+      "hex": "50 01 10",
+      "fallback": false
+    }
+  },
+  "0x51": {
+    "input:13": {
+      "ok": true,
+      "len": 13,
+      "hex": "51 02 09 01 02 09 01 00 00 00 00 00 00",
+      "fallback": false
+    },
+    "feature:13": {
+      "ok": true,
+      "len": 13,
+      "hex": "51 02 09 01 02 09 01 00 00 00 00 00 00",
+      "fallback": false
+    }
+  },
+  "0x52": {
+    "input:3": {
+      "ok": false,
+      "len": 3,
+      "hex": "51 02 09",
+      "fallback": true
+    },
+    "feature:3": {
+      "ok": false,
+      "len": 3,
+      "hex": "51 02 09",
+      "fallback": true
+    }
+  },
+  "0x53": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "51 02",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "51 02",
+      "fallback": true
+    }
+  },
+  "0x59": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "51 02",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "51 02",
+      "fallback": true
+    }
+  },
+  "0x5a": {
+    "input:17": {
+      "ok": false,
+      "len": 17,
+      "hex": "51 02 09 01 02 09 01 00 00 00 00 00 00 32 36 30 35",
+      "fallback": true
+    },
+    "feature:17": {
+      "ok": false,
+      "len": 17,
+      "hex": "51 02 09 01 02 09 01 00 00 00 00 00 00 32 36 30 35",
+      "fallback": true
+    }
+  },
+  "0x5c": {
+    "input:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "5c 00",
+      "fallback": false
+    },
+    "feature:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "5c 00",
+      "fallback": false
+    }
+  },
+  "0x5d": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "5c 00",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "5c 00",
+      "fallback": true
+    }
+  },
+  "0x60": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "5c 00",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "5c 00",
+      "fallback": true
+    }
+  },
+  "0x61": {
+    "input:17": {
+      "ok": true,
+      "len": 17,
+      "hex": "61 48 4f 30 30 34 32 2d 4c 4c 30 30 31 32 36 30 35",
+      "fallback": false
+    },
+    "feature:17": {
+      "ok": true,
+      "len": 17,
+      "hex": "61 48 4f 30 30 34 32 2d 4c 4c 30 30 31 32 36 30 35",
+      "fallback": false
+    }
+  },
+  "0x62": {
+    "input:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "62 10",
+      "fallback": false
+    },
+    "feature:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "62 10",
+      "fallback": false
+    }
+  },
+  "0x67": {
+    "input:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "67 01",
+      "fallback": false
+    },
+    "feature:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "67 01",
+      "fallback": false
+    }
+  },
+  "0x68": {
+    "input:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "68 01",
+      "fallback": false
+    },
+    "feature:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "68 01",
+      "fallback": false
+    }
+  },
+  "0x69": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "68 01",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "68 01",
+      "fallback": true
+    }
+  },
+  "0x75": {
+    "input:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "75 06",
+      "fallback": false
+    },
+    "feature:2": {
+      "ok": true,
+      "len": 2,
+      "hex": "75 06",
+      "fallback": false
+    }
+  },
+  "0x76": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "75 06",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "75 06",
+      "fallback": true
+    }
+  },
+  "0x7a": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "75 06",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "75 06",
+      "fallback": true
+    }
+  },
+  "0x7b": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "75 06",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "75 06",
+      "fallback": true
+    }
+  },
+  "0x7c": {
+    "input:7": {
+      "ok": true,
+      "len": 7,
+      "hex": "7c 3b fe 0d 95 68 86",
+      "fallback": false
+    },
+    "feature:7": {
+      "ok": true,
+      "len": 7,
+      "hex": "7c 3b fe 0d 95 68 86",
+      "fallback": false
+    }
+  },
+  "0x7d": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "7c 3b",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "7c 3b",
+      "fallback": true
+    }
+  },
+  "0x7e": {
+    "input:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "7c 3b",
+      "fallback": true
+    },
+    "feature:2": {
+      "ok": false,
+      "len": 2,
+      "hex": "7c 3b",
+      "fallback": true
+    }
+  }
+}

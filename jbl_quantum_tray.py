@@ -221,9 +221,13 @@ class BatteryTrayApp:
     def _monitor_loop(self):
         device = None
         last_poll_time = 0
+        read_errors = 0
+        poll_errors = 0
         
         while self.running:
             if not device:
+                read_errors = 0
+                poll_errors = 0
                 try:
                     _log("Searching for JBL device...", logging.DEBUG)
                     device = get_jbl_device(
@@ -260,6 +264,7 @@ class BatteryTrayApp:
                 if cur_t - last_poll_time > 2.0:
                     try:
                         link_status = device.poll_link()
+                        poll_errors = 0
                         if link_status is not None:
                             self.link_status = link_status
                             if self.link_status:
@@ -273,13 +278,21 @@ class BatteryTrayApp:
                                 self.current_percent = None
                                 self.is_charging = False
                     except Exception as e:
+                        poll_errors += 1
                         _log(f"Polling error: {e}", logging.DEBUG)
                         self.link_status = False
+                        if poll_errors >= 5:
+                            _log(f"Too many polling errors ({poll_errors}), reconnecting...", logging.WARNING)
+                            try: device.close()
+                            except: pass
+                            device = None
+                            self._export_status()
                     last_poll_time = cur_t
 
                 # Read interrupt reports (910 battery and both 610/910 mute toggle)
                 try:
                     data = device.read(timeout_ms=50)
+                    read_errors = 0
                     if data:
                         # 910 sends battery updates via interrupt
                         res = parse_battery_from_packet(data)
@@ -294,7 +307,17 @@ class BatteryTrayApp:
                             else: # Absolute state
                                 self.is_muted = m[1]
                 except Exception as e:
+                    read_errors += 1
                     _log(f"Read error: {e}", logging.DEBUG)
+                    if read_errors >= 10:
+                        # Dead handle (e.g. ENODEV after another tool
+                        # claimed iface 5, or headset re-enumerated):
+                        # drop it so the loop reconnects fresh.
+                        _log(f"Too many read errors ({read_errors}), reconnecting...", logging.WARNING)
+                        try: device.close()
+                        except: pass
+                        device, self.link_status = None, False
+                        self._export_status()
                 
                 time.sleep(0.01)
             except Exception as e:

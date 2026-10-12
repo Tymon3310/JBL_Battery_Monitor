@@ -120,6 +120,11 @@ The scripts below are in `tools/` and are useful for analysis/debug:
 - `tools/jbl_battery_capture.py`: capture on connection/disconnection
 - `tools/jbl_battery_force.py`: brute force/experimental
 - `tools/find_hidraw.py`: finds the `/dev/hidrawX`
+- `tools/quantum610_deep_scan.py`: validated GET_REPORT dump + `--monitor` CSV logger
+- `tools/quantum610_lighting.py`: logo RGB (state/presets/custom `--cycle`, `--restore-factory`)
+- `tools/quantum610_rgb_probe.py`: raw Output-report probe (superseded by lighting tool)
+
+Full reverse-engineered packet map: `docs/QUANTUM610_PACKETS.md`.
 
 ## 📝 Notes
 
