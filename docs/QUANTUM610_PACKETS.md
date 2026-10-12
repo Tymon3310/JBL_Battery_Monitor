@@ -354,6 +354,12 @@ report ID, `Pack=1`). ✅ = verified live on this 610, ❌ = fallback
   no valid compression streams, high entropy). Key lives in bootloader.
 * **Decompile/custom FW: no.** Decryption needs the device key (SWD/physical
   attack territory) and images are signed. Stock 1.9.2 stands.
+* **Key hunt (2026-10-12): negative.** Public `ramikg/airoha-firmware-parser`
+  (AES-128-CBC + LZMA, test key `000102…0f`) does not decrypt these blobs
+  (both byte orders × offsets; no ARM vectors/LZMA); `MDR_Proxy` is only an
+  encrypted-image mirror; the AB1565 EVK repo is gone; known Sony keys came
+  from physical SoC dumps, and no Harman key leaked anywhere. Blobs also fail
+  raw-LZMA probes. End of road without hardware.
 * Safe, useful, still-untested: software mic-mute (`SET 0x67`), chat-balance
   set (`SET 0x6C`), sidetone set (`0x5D`), standby-timer set (`0x75`) — all
   1-byte, reversible. See §12 for results.
