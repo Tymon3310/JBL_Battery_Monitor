@@ -392,3 +392,18 @@ All reversible 1-byte SETs tried with read-before/verify-after/restore.
   `0x10`). Dial is physical-only (or the calibration-state collision wins).
 * No-op SETs (`0x75`/`0x5D` with current value) confirm the SET path ACKs.
 
+## 13. Related work (surveyed 2026-10-12)
+
+* **HeyOkay/HaloBattery PR #35** (Windows battery widget): independent 910
+  implementation crediting this repo's upstream — same findings (`0x08`
+  battery, `0x2F` mute, `0x09` power, quiet-bus). Borrowed idea: pick the
+  device by **usage page `ff13:0001`** instead of interface index (robust
+  across re-enumeration; cf. our descriptor bytes `06 13 ff 09 01`). Only
+  covers 910 PID `2088`, polled via hidapi — our 610 data (`0x49` poll,
+  `0x62`/`0x68`, lighting) is still unique to this repo.
+* **Sapd/HeadsetControl**: no JBL support — nothing to borrow.
+* **pembem22/jbl-firmware**: JBL *speaker* images only — irrelevant here.
+* **Q400/Q600 manuals**: RGB toggle = hold mic-mute button 5 s (likely works
+  on 610 too — hardware shortcut, zero risk to try). Q600 auto-offs after
+  10 min idle (cf. `0x75` standby = 6 factory).
+
